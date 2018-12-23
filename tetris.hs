@@ -24,6 +24,7 @@ data Position = Position {
 
 makeLenses ''Position
 
+--add Monoid and Ord instance of Position datatype
 instance Ord Position where
   compare p1@(Position x1 y1) p2@(Position x2 y2) = compare (x1 + y1) (x2 + y2) 
 
@@ -39,6 +40,9 @@ data Tetrimino = Tetrimino {
 
 makeLenses ''Tetrimino
 
+--Board datatype
+--contain a Map constructed of (Position, T-Type)
+--if a Position is not occupied by a Tetris, then it is not in the Map
 type Board = Map Position TetriminoType
 
 data Direction = Left | Right | Down
@@ -57,6 +61,8 @@ data Game = Game {
   _score :: Int,
   _stable :: Board
   } deriving (Show, Eq)
+
+makeLenses ''Game
 
 class Move o where
   move :: Direction -> o -> o
@@ -135,7 +141,7 @@ tetrisBlocked board = any cellBlocked . allPosition
         atBottom (Position x y) = y == 1
 
 gameBlocked :: Game -> Bool
-gameBlocked g = tetrisBloced (g^.stable) (g^.movingTetris)
+gameBlocked g = tetrisBlocked (g^.stable) (g^.movingTetris)
 
 gameOver :: Game -> Bool
 gameOver g = (gameBlocked g) 
@@ -143,8 +149,25 @@ gameOver g = (gameBlocked g)
 
 clearFullRows :: Game -> Game
 clearFullRows g = g & stable %~ clearBoard
-                    & clears %~ (addRowClears count)
+                    & clears .~ count
+                    & inCombo .~ True
+                    & combo %~ (+ 1)
   where
-    clearBoard = M.mapKeys 
+    clearBoard = M.mapKeys moveAbove . M.filterWithKey notClearRows
+    count = Prelude.length clearRows
+    isFull r = boardWidth == (Prelude.length (M.filterWithKey (inRow r) (g^.stable)))
+    inRow r (Position x y) _ = r == y
+    clearRows = Prelude.filter isFull [1..boardHeight]
+    notClearRows (Position x y) _ = notElem y clearRows
+    moveAbove (Position x y)= 
+      let down = Prelude.length (Prelude.filter (<y) clearRows)
+      in Position x (y-down)
+
+updateScore :: Game -> Game
+updateScore g = 
+  let increase = (g^.clears)*(100 + 50 * (g^.combo))
+  in 
+     g & score %~ (+ increase)
+       & clears .~ 0          
 
 
