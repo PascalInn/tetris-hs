@@ -6,8 +6,8 @@ module Tetris where
 import Data.Map.Strict (Map)
 import qualified Data.Map as M
 import Control.Lens
-import Data.Sequence
-import qualified Data.Sequence as Seq
+--import Data.Sequence
+--import qualified Data.Sequence as Seq
 import System.Random (randomR, getStdRandom)
 --import Data.ByteString
 --import Data.Word (Word8)
@@ -129,11 +129,12 @@ boardHeight = 20
 randomType :: IO TetriminoType
 randomType = do
   randomPosition <- getStdRandom (randomR (0, 6))
-  let (_, right) = Seq.splitAt randomPosition (Seq.fromList [I,O,T,S,Z,J,L]) 
-      (y Seq.:< ys) = Seq.viewl right
+--  let (_, right) = Seq.splitAt randomPosition (Seq.fromList [I,O,T,S,Z,J,L]) 
+--      (y Seq.:< ys) = Seq.viewl right
   -- y <- Prelude.lookup randomPosition [(0,I),(1,O),(2,T),(3,S),(4,Z),(5,J),(6,L)]
   -- fromMaybe y
-  return y
+  return (head (Prelude.drop randomPosition [I,O,T,S,Z,J,L]))
+
 
 --functions on game or board
 initGame :: IO Game
@@ -170,13 +171,13 @@ clearFullRows g = g & stable %~ clearBoard
                     & combo %~ setCombo
   where
     clearBoard = M.mapKeys moveAbove . M.filterWithKey notClearRows
-    count = Prelude.length clearRows
-    isFull r = boardWidth == (Prelude.length (M.filterWithKey (inRow r) (g^.stable)))
+    count = length clearRows
+    isFull r = boardWidth == (length (M.filterWithKey (inRow r) (g^.stable)))
     inRow r (Position x y) _ = r == y
-    clearRows = Prelude.filter isFull [1..boardHeight]
+    clearRows = filter isFull [1..boardHeight]
     notClearRows (Position x y) _ = notElem y clearRows
     moveAbove (Position x y)= 
-      let down = Prelude.length (Prelude.filter (<y) clearRows)
+      let down = length (filter (<y) clearRows)
       in Position x (y-down)
     setBool = count > 0
     setCombo a = if setBool
