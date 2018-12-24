@@ -4,7 +4,7 @@
 module Tetris where
 
 import Data.Map.Strict (Map)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import Control.Lens
 --import Data.Sequence
 --import qualified Data.Sequence as Seq
@@ -28,7 +28,7 @@ makeLenses ''Position
 
 --add Monoid and Ord instance of Position datatype
 instance Ord Position where
-  compare p1@(Position x1 y1) p2@(Position x2 y2) = compare (x1 + y1) (x2 + y2) 
+  compare (Position x1 y1) (Position x2 y2) = compare (x1 + y1) (x2 + y2) 
 
 instance Monoid Position where
   mempty = Position 0 0
@@ -106,10 +106,10 @@ tetrisShape L = map position [(0,-1),(0,1),(1,-1)]
 rotateTetrimino :: Tetrimino -> Tetrimino
 rotateTetrimino t
   |(t^.tType) == O = t
-  |(t^.tType) == I && (Position 0 (-1) `elem` (t^.around)) = Tetrimino (t^.tType) (t^.center) (map clockWise (t^.around))
-  |(t^.tType) == S && (Position 1 (-1)) `elem` (t^.around) = Tetrimino (t^.tType) (t^.center) (map clockWise (t^.around))
-  |(t^.tType) == Z && (Position 1 1) `elem` (t^.around) = Tetrimino (t^.tType) (t^.center) (map clockWise (t^.around))
-  |otherwise = Tetrimino (t^.tType) (t^.center) (map counterClockWise (t^.around))
+  |(t^.tType) == I && (Position 0 (-1)) `elem` (t^.around) = Tetrimino (t^.tType) (t^.center) (map clockWise $ t^.around)
+  |(t^.tType) == S && (Position 1 (-1)) `elem` (t^.around) = Tetrimino (t^.tType) (t^.center) (map clockWise $ t^.around)
+  |(t^.tType) == Z && (Position 1 1) `elem` (t^.around) = Tetrimino (t^.tType) (t^.center) (map clockWise $ t^.around)
+  |otherwise = Tetrimino (t^.tType) (t^.center) (map counterClockWise $ t^.around)
 
 allPosition :: Tetrimino -> [Position]
 allPosition t = t^.center :
@@ -133,7 +133,7 @@ randomType = do
 --      (y Seq.:< ys) = Seq.viewl right
   -- y <- Prelude.lookup randomPosition [(0,I),(1,O),(2,T),(3,S),(4,Z),(5,J),(6,L)]
   -- fromMaybe y
-  return (head (Prelude.drop randomPosition [I,O,T,S,Z,J,L]))
+  pure $ head $ Prelude.drop randomPosition [I,O,T,S,Z,J,L]
 
 
 --functions on game or board
@@ -157,7 +157,7 @@ safeMoving b t = all allSafe ( allPosition t)
 --        atBottom (Position x y) = y == 1
 
 gameBlocked :: Game -> Bool
-gameBlocked g = not (safeMoving (g^.stable) (move Down (g^.movingTetris)))
+gameBlocked g = not $ safeMoving (g^.stable) (move Down (g^.movingTetris))
 --  tetrisBlocked (g^.stable) (g^.movingTetris)
 
 gameOver :: Game -> Bool
@@ -172,12 +172,12 @@ clearFullRows g = g & stable %~ clearBoard
   where
     clearBoard = M.mapKeys moveAbove . M.filterWithKey notClearRows
     count = length clearRows
-    isFull r = boardWidth == (length (M.filterWithKey (inRow r) (g^.stable)))
+    isFull r = boardWidth == (length $ M.filterWithKey (inRow r) (g^.stable))
     inRow r (Position x y) _ = r == y
     clearRows = filter isFull [1..boardHeight]
     notClearRows (Position x y) _ = notElem y clearRows
     moveAbove (Position x y)= 
-      let down = length (filter (<y) clearRows)
+      let down = length $ filter (<y) clearRows
       in Position x (y-down)
     setBool = count > 0
     setCombo a = if setBool
@@ -194,7 +194,7 @@ updateScore g =
 endMovingTetris :: Game -> Game
 endMovingTetris g = g & stable %~ M.union newStable
   where
-    newStable = M.fromList [(p, g^.movingTetris^.tType)|p <- allPosition (g^.movingTetris)]
+    newStable = M.fromList [(p, g^.movingTetris^.tType)|p <- allPosition $ g^.movingTetris]
 
 newTetris :: Game -> IO Game
 newTetris g = do
@@ -243,11 +243,11 @@ rotateInGame b t = if safeMoving b (rotateTetrimino t)
   where
     additionalRule b t = 
       if t^.tType `elem` [L,J,T]
-         then any (`M.member` b) (map (add_ (t^.center)) [(Position 0 1),(Position 0 (-1))])
+         then any (`M.member` b) (map (add_ $ t^.center) [(Position 0 1),(Position 0 (-1))])
          else False                                
 
 gameRotate :: Game -> Game
-gameRotate g = g & movingTetris %~ (rotateInGame (g^.stable))
+gameRotate g = g & movingTetris %~ (rotateInGame $ g^.stable)
 
 fastDrop :: Game -> Game
 fastDrop g = g & movingTetris .~ fastDropT g
@@ -257,5 +257,5 @@ fastDropT g = moveBy n Down $ g^.movingTetris
   where
     n = minimum diff
     diff = [y2 - y1 - 1 | (Position x1 y1) <- (M.keys (g^.stable)), 
-                          (Position x2 y2) <- (allPosition (g^.movingTetris)), 
+                          (Position x2 y2) <- allPosition $ g^.movingTetris, 
                           x1 == x2, y1 < y2]
