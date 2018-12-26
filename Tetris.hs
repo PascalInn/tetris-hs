@@ -243,6 +243,7 @@ fastDropT :: Game -> Tetrimino
 fastDropT g = moveBy n Down $ g^.movingTetris
   where
     n = minimum diff
-    diff = [y2 - y1 - 1 | (Position x1 y1) <- (M.keys (g^.stable)), 
+    diff = [y2 - y1 - 1 | (Position x1 y1) <- mappend bottum (M.keys (g^.stable)), 
                           (Position x2 y2) <- allPosition $ g^.movingTetris, 
                           x1 == x2, y1 < y2]
+    bottum = [Position x 0 | x <- [1..boardWidth]]

@@ -41,7 +41,7 @@ decodeBoard s = M.fromList [(p, (decodeType i)) | (p, i) <- zip wholeBoard s, i 
     decodeType '6' = L
 
 gameToCode :: Game -> [Char]
-gameToCode g = boardToCode newB
+gameToCode g = (boardToCode newB) ++ (show $ g^.score)
   where 
     newB = M.union (g^.stable) tetrisBoard
     tetrisBoard = M.fromList [(p, g^.movingTetris^.tType)|p <- allPosition $ g^.movingTetris]
