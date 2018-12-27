@@ -1,6 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
-
 module Tetris where
 
 import Data.Map.Strict (Map)
@@ -39,19 +38,12 @@ data Tetrimino = Tetrimino {
 
 makeLenses ''Tetrimino
 
---Board datatype
---contain a Map constructed of (Position, T-Type)
---if a Position is not occupied by a Tetris, then it is not in the Map
-type Board = Map Position TetriminoType
+type Board = Map Position TetriminoType-- Map elememt form :(Position, TetriminoType)
 
 data Direction = Left | Right | Down
   deriving (Show, Eq)
 
-data GameState = NotStarted | Playing | MultiPlayers | End
-  deriving (Show, Eq)
-
 data Game = Game {
-  _gameState :: GameState,
   _movingTetris :: Tetrimino,
   _nextTetrisType :: TetriminoType,
   _clears :: Int,
@@ -135,7 +127,7 @@ initGame = do
   firstT <- randomType
   nextT <- randomType
   pure $ 
-    Game NotStarted (initTetri firstT) nextT 0 0 False 0 mempty
+    Game (initTetri firstT) nextT 0 0 False 0 mempty
 
 safeMoving :: Board -> Tetrimino -> Bool
 safeMoving b t = all allSafe ( allPosition t)
@@ -200,16 +192,13 @@ gameMove d g = g & movingTetris %~ moveSafely
 autoStep :: Game -> Game
 autoStep g = gameMove Down g
 
-twoTimesStep :: Game -> Game
-twoTimesStep g = gameMove Down (gameMove Down g)
-
 timeStep :: Game -> IO Game
 timeStep g = 
   if gameBlocked g
     then newTetris . updateScore . clearFullRows . endMovingTetris $ g
     else pure . autoStep $ g
 
---maybe can be reduced, ugly code
+--maybe can be reduced, ugly code, try left move and right move and if type is I, try moveby 2 block right.
 rotateInGame :: Board -> Tetrimino -> Tetrimino
 rotateInGame b t = if safeMoving b (rotateTetrimino t)
                       then rotateTetrimino t

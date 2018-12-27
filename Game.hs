@@ -1,9 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
-module Game
-  ( playGame
-  ) where
+module Game where
 
 import Control.Concurrent (threadDelay, forkIO) {--}
 import Control.Monad (void, forever)
@@ -25,10 +23,12 @@ import qualified Graphics.Vty as V
 import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Lens
-import qualified Network.WebSockets as WS
+--import qualified Network.WebSockets as WS
+import Network.Socket hiding (recv)
+import Network.Socket.ByteString (recv, sendAll)
+import qualified Data.ByteString as S
 
 data PlayingMode = Single | Player1 | Player2 deriving (Show, Eq)
-
 
 data UI = UI
   { _game    :: Game         -- ^ tetris game
@@ -37,7 +37,7 @@ data UI = UI
   , _state   :: PlayingMode
   , _dualBoard :: Board
   , _dualScore :: Int
-  , _connection :: Maybe WS.Connection
+  , _connection :: Maybe Socket
   }
 
 makeLenses ''UI
@@ -61,7 +61,7 @@ app = App { appDraw = drawUI
           , appAttrMap = const theMap
           }
 
-playGame :: Maybe String -> PlayingMode -> Maybe WS.Connection -> IO Game
+playGame :: Maybe String -> PlayingMode -> Maybe Socket -> IO Game
 playGame mp pm conn= do
   let delay = levelToDelay
   chan <- newBChan 10
@@ -121,17 +121,17 @@ handleTok ui =
          newUI <- liftIO $ talk (ui ^. connection) ui
          continue newUI 
 
-talk :: Maybe WS.Connection -> UI -> IO UI
+talk :: Maybe Socket -> UI -> IO UI
 talk Nothing ui = pure $ ui
 talk (Just conn) ui = do
-  msg <- WS.receiveData conn
-  WS.sendTextData conn selfInfo
+  msg <- recv conn 1024
+  sendAll conn selfInfo
   pure $ updateDual msg
   where
-    selfInfo = T.pack $ gameToCode $ ui ^. game
+    selfInfo = S.pack $ gameToCode $ ui ^. game
     updateDual msg = 
-        ui & dualBoard .~ (decodeBoard (take 200 (T.unpack msg)))
-           & dualScore .~ (read (drop 200 (T.unpack msg)) :: Int)
+        ui & dualBoard .~ (decodeBoard (take 200 (S.unpack msg)))
+           & dualScore .~ fromEnum (head $ drop 200 (S.unpack msg))
 
 -- | Restart game at the same level
 restart :: UI -> EventM Name (Next UI)
