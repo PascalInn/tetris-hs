@@ -148,12 +148,12 @@ drawUI :: UI -> [Widget Name]
 drawUI ui
   | ui ^. state == Single
   =[ C.vCenter $ vLimit 22 $ hBox [ padLeft Max $ drawGrid ui
-                                 , padRight Max $ padLeft (Pad 3) $ drawInfo (ui ^. game)
+                                 , padRight Max $ padLeft (Pad 3) $ drawInfo ui
                                  ]
   ]
   | otherwise
   =[ C.vCenter $ vLimit 22 $ hBox [ padLeft Max $ drawGrid ui
-                                 , drawInfo (ui ^. game)
+                                 , drawInfo ui
                                  , padRight Max $ drawenemyGrid ui
                                  ]
   ] 
@@ -247,31 +247,38 @@ drawStat s n = padLeftRight 1
 drawLeaderBoard :: Game -> Widget Name
 drawLeaderBoard g = emptyWidget
 
-drawInfo :: Game -> Widget Name
-drawInfo g = hLimit 18 -- size of next piece box
-  $ vBox [ drawNextShape (g ^. nextTetrisType)
-         , padTop (Pad 3) $ drawScore g
+drawInfo :: UI -> Widget Name
+drawInfo ui = hLimit 18 -- size of next piece box
+  $ vBox [ drawNextShape (ui ^. game ^. nextTetrisType)
+         , padTop (Pad 3) $ drawScore ui
          , padTop (Pad 2) $ drawHelp
-         , padTop (Pad 1) $ drawGameOver g
+         , padTop (Pad 1) $ drawGameOver (ui ^. game)
          ]
 
-drawScore :: Game -> Widget Name
-drawScore g = hLimit 18
-  $ padTopBottom 0
-  $ withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "Score")
-  $ vBox [ drawStat "Score" $ g ^. score
-         , drawLeaderBoard g
-         ]
+drawScore :: UI -> Widget Name
+drawScore ui 
+  | (ui ^. state) == Single = hLimit 18
+                                  $ padTopBottom 0
+                                  $ withBorderStyle BS.unicodeBold
+                                  $ B.borderWithLabel (str "Score")
+                                  $ drawStat "Score" $ (ui ^. game ^. score)
+  | otherwise                   = hLimit 18
+                                  $ padTopBottom 0
+                                  $ withBorderStyle BS.unicodeBold
+                                  $ B.borderWithLabel (str "Score")
+                                  $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
+                                         , padTop (Pad 1) $ drawStat "enemy score" $ (ui ^. dualScore)
+                                         , drawLeaderBoard (ui ^. game)
+                                         ]   
 
 drawNextShape :: TetriminoType -> Widget Name
 drawNextShape t = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Next")
   $ padTopBottom 1 $ padLeftRight 4
-  $ vLimit 4
-  $ vBox $ mkRow <$> [0,-1]
+  $ vLimit 16
+  $ vBox $ mkRow <$> [1,0,-1]
   where
-    mkRow y = hBox $ drawMCell Nothing InNextShape Normal . cellAt . (`Position` y) <$> [-2..1]
+    mkRow y = hBox $ drawMCell Nothing InNextShape Normal . cellAt . (`Position` y) <$> [-2..2]
     cellAt (Position x y) = if (Position x y) `elem` cs then Just t else Nothing
     blk = Tetrimino t (Position 0 0) (tetrisShape t)
     cs = allPosition blk

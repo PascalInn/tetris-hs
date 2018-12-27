@@ -51,7 +51,7 @@ buttonLayer st =
       C.hCenterLayer (vBox $ padTopBottom 1 <$> buttons)
     where
         buttons = mkButton <$> buttonData
-        buttonData = [ (Button1, "Signle ", "single")
+        buttonData = [ (Button1, "Single ", "single")
                      , (Button2, "Player1", "player1")
                      , (Button3, "Player2", "player2")
                      , (Button4, " Quit  ", "quit")
