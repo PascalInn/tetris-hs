@@ -122,7 +122,7 @@ handleTok ui =
                           & dualScore .~ fromEnum (head $ drop 200 (S.unpack msg))
 
 defaultAddr :: String
-defaultAddr = "127.0.0.1"
+defaultAddr = "10.19.74.166"
 
 talk :: UI -> IO S.ByteString
 talk ui = 
@@ -164,18 +164,29 @@ restart ui = do
 -- Drawing
 
 drawUI :: UI -> [Widget Name]
-drawUI ui =
-  [ C.vCenter $ vLimit 22 $ hBox [ padLeft Max $ drawGrid ui
+drawUI ui
+  | ui ^. state == Single
+  =[ C.vCenter $ vLimit 22 $ hBox [ padLeft Max $ drawGrid ui
                                  , padRight Max $ padLeft (Pad 3) $ drawInfo (ui ^. game)
                                  ]
   ]
+  | otherwise
+  =[ C.vCenter $ vLimit 22 $ hBox [ padLeft Max $ drawGrid ui
+                                 , drawInfo (ui ^. game)
+                                 , padRight Max $ drawenemyGrid ui
+                                 ]
+  ] 
 
 drawGrid :: UI -> Widget Name
 drawGrid ui = hLimit 22
   $ withBorderStyle BS.unicodeBold
-  $ B.borderWithLabel (str "Tetris")
+  $ B.borderWithLabel (str name)
   $ vBox rows
-  where
+  where 
+    name 
+      | ui ^. state == Single  = "Tetris"
+      | ui ^. state == Player1 = "Player1"
+      | ui ^. state == Player2 = "Player2"
     rows = [foldr (<+>) emptyWidget $ M.filterWithKey (inRow r) gmap
              | r <- [boardHeight,boardHeight-1..1]
            ]
@@ -187,6 +198,23 @@ drawGrid ui = hLimit 22
     blkMap b v = M.fromList . map (, draw v . Just $ b ^. tType) $ allPosition b
     draw = drawMCell (ui ^. predrop) InGrid
     g = ui ^. game
+
+drawenemyGrid :: UI -> Widget Name
+drawenemyGrid ui = hLimit 22
+  $ withBorderStyle BS.unicodeBold
+  $ B.borderWithLabel (str name)
+  $ vBox rows
+  where 
+    name 
+      | ui ^. state == Player1 = "Player2"
+      | ui ^. state == Player2 = "Player1"
+    rows = [foldr (<+>) emptyWidget $ M.filterWithKey (inRow r) gmap
+             | r <- [boardHeight,boardHeight-1..1]
+           ]
+    inRow r (Position _ y) _ = r == y
+    gmap = mconcat [brdMap, emptyCellMap]
+    brdMap = draw Normal . Just <$> ui ^. dualBoard
+    draw = drawMCell (ui ^. predrop) InGrid
 
 emptyCellMap :: Map Position (Widget Name)
 emptyCellMap = M.fromList cws
