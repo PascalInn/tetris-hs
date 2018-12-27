@@ -80,44 +80,27 @@ main = do
   (Opts hd ml hs md) <- execParser fullopts           -- get CLI opts/args
   let mp = hdOptStr <$> hd                         -- determine hard drop preview cell
   when hs (getHighScore >>= printM >> exitSuccess) -- show high score and exit
-  if md == 0
+  if md == Just 0
     then do
          g <- playGame mp Single Nothing
          handleEndGame (_score g)
     else 
-      if md == 1
+      if md == Just 1
         then withSocketsDo $ do
                addr <- resolve Nothing "3000"
                sock <- open addr
                g <- playGame mp Player1 (Just sock)
                handleEndGame (_score g) 
         else withSocketsDo $ do
-               addr <- resolve (Just defaultAddr) "3000"
-               sock <- connecting addr
-               g <- playGame mp Player2 (Just sock)
+               g <- playGame mp Player2 Nothing
                handleEndGame (_score g)
-
-resolve Nothing port = do 
-  let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
-  addr:_<-getAddrInfo (Just hints) Nothing (Just port)
-  return addr
-resolve (Just host) port = do
-  let hints = defaultHints{addrSocketType = Stream}
-  addr:_<-getAddrInfo (Just hints) (Just host) (Just port)
-  return addr   
 
 open addr = do
   sock <- socket (addrFamily addr) (addrSocketType addr)(addrProtocol addr)
   setSocketOption sock ReuseAddr 1
   bind sock (addrAddress addr)
-  listen sock 10000  
-  (conn, peer) <- accept sock
-  return conn
-
-connecting addr = do
-  sock<- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-  connect sock $ addrAddress addr
-  return sock                 
+  listen sock 3000  
+  return sock
 
 handleEndGame :: Int -> IO ()
 handleEndGame s = do

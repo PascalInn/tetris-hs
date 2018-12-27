@@ -116,22 +116,43 @@ handleTok :: UI -> EventM Name (Next UI)
 handleTok ui = 
   if ui ^. state == Single
      then continue $ ui
-     else 
-       do
-         newUI <- liftIO $ talk (ui ^. connection) ui
-         continue newUI 
+     else do
+            msg <- liftIO $ talk ui
+            continue $ ui & dualBoard .~ (decodeBoard (take 200 (S.unpack msg)))
+                          & dualScore .~ fromEnum (head $ drop 200 (S.unpack msg))
 
-talk :: Maybe Socket -> UI -> IO UI
-talk Nothing ui = pure $ ui
-talk (Just conn) ui = do
-  msg <- recv conn 1024
-  sendAll conn selfInfo
-  pure $ updateDual msg
+defaultAddr :: String
+defaultAddr = "127.0.0.1"
+
+talk :: UI -> IO S.ByteString
+talk ui = 
+  if ui ^. state == Player1
+    then do
+      (conn, _) <- accept' $ ui ^. connection
+      msg <- recv conn 4096
+      sendAll conn selfInfo
+      close conn
+      return msg
+    else do
+      addr <- resolve (Just defaultAddr) "3000"
+      sock<- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+      connect sock $ addrAddress addr
+      sendAll sock selfInfo
+      msg <- recv sock 4096
+      close sock
+      return msg
   where
     selfInfo = S.pack $ gameToCode $ ui ^. game
-    updateDual msg = 
-        ui & dualBoard .~ (decodeBoard (take 200 (S.unpack msg)))
-           & dualScore .~ fromEnum (head $ drop 200 (S.unpack msg))
+    accept' (Just sock) = accept sock
+
+resolve Nothing port = do 
+  let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
+  addr:_<-getAddrInfo (Just hints) Nothing (Just port)
+  return addr
+resolve (Just host) port = do
+  let hints = defaultHints{addrSocketType = Stream}
+  addr:_<-getAddrInfo (Just hints) (Just host) (Just port)
+  return addr  
 
 -- | Restart game at the same level
 restart :: UI -> EventM Name (Next UI)
