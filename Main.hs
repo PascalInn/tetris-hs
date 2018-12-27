@@ -9,6 +9,7 @@ import Text.Read (readMaybe)
 
 import Tetris
 import Game
+import Cover
 
 import Options.Applicative
 import qualified System.Directory as D
@@ -20,7 +21,7 @@ data Opts = Opts
   { hardDrop :: Maybe HardDropOpt
   , level    :: Maybe Int
   , score    :: Bool
-  , gamemode :: Maybe Int
+--  , gamemode :: Maybe Int
   }
 
 data HardDropOpt = AsciiOnly | CustomChars String
@@ -38,13 +39,13 @@ opts = Opts
   <*> switch
     (  long "high-score"
     <> help "Print high score and exit" )
-  <*> optional (option auto
+{-  <*> optional (option auto
     (  long "game-mode"
     <> short 'g'
     <> showDefault
     <> value 0
     <> metavar "GAME-MODE"
-    <> help "Choose game mode"))
+    <> help "Choose game mode"))-}
 
 hardDropOpt :: Parser HardDropOpt
 hardDropOpt = asciiOpt <|> custOpt
@@ -75,25 +76,42 @@ hdOptStr :: HardDropOpt -> String
 hdOptStr AsciiOnly = "[]"
 hdOptStr (CustomChars s) = s
 
+defaultAddr :: String
+defaultAddr = "10.19.74.166"
+
 main :: IO ()
 main = do
-  (Opts hd ml hs md) <- execParser fullopts           -- get CLI opts/args
+  (Opts hd ml hs) <- execParser fullopts           -- get CLI opts/args
   let mp = hdOptStr <$> hd                         -- determine hard drop preview cell
   when hs (getHighScore >>= printM >> exitSuccess) -- show high score and exit
-  if md == Just 0
+  num <- fromMaybe cover (return <$> ml)
+  if num == 1
     then do
          g <- playGame mp Single Nothing
          handleEndGame (_score g)
     else 
-      if md == Just 1
+      if num == 2
         then withSocketsDo $ do
                addr <- resolve Nothing "3000"
                sock <- open addr
-               g <- playGame mp Player1 (Just sock)
+               (conn, _) <- accept sock
+               g <- playGame mp Player1 (Just conn)
                handleEndGame (_score g) 
         else withSocketsDo $ do
-               g <- playGame mp Player2 Nothing
+               addr <- resolve (Just defaultAddr) "3000"
+               sock<- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+               connect sock $ addrAddress addr
+               g <- playGame mp Player2 (Just sock)
                handleEndGame (_score g)
+
+resolve Nothing port = do 
+  let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
+  addr:_<-getAddrInfo (Just hints) Nothing (Just port)
+  return addr
+resolve (Just host) port = do
+  let hints = defaultHints{addrSocketType = Stream}
+  addr:_<-getAddrInfo (Just hints) (Just host) (Just port)
+  return addr  
 
 open addr = do
   sock <- socket (addrFamily addr) (addrSocketType addr)(addrProtocol addr)

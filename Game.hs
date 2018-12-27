@@ -117,42 +117,23 @@ handleTok ui =
   if ui ^. state == Single
      then continue $ ui
      else do
-            msg <- liftIO $ talk ui
+            msg <- liftIO $ talk (ui ^. connection) ui
             continue $ ui & dualBoard .~ (decodeBoard (take 200 (S.unpack msg)))
                           & dualScore .~ fromEnum (head $ drop 200 (S.unpack msg))
 
-defaultAddr :: String
-defaultAddr = "10.19.74.166"
-
-talk :: UI -> IO S.ByteString
-talk ui = 
+talk :: Maybe Socket -> UI -> IO S.ByteString
+talk (Just sock) ui = 
   if ui ^. state == Player1
     then do
-      (conn, _) <- accept' $ ui ^. connection
-      msg <- recv conn 4096
-      sendAll conn selfInfo
-      close conn
+      msg <- recv sock 4096
+      sendAll sock selfInfo
       return msg
     else do
-      addr <- resolve (Just defaultAddr) "3000"
-      sock<- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-      connect sock $ addrAddress addr
       sendAll sock selfInfo
       msg <- recv sock 4096
-      close sock
       return msg
   where
     selfInfo = S.pack $ gameToCode $ ui ^. game
-    accept' (Just sock) = accept sock
-
-resolve Nothing port = do 
-  let hints = defaultHints {addrFlags = [AI_PASSIVE], addrSocketType = Stream}
-  addr:_<-getAddrInfo (Just hints) Nothing (Just port)
-  return addr
-resolve (Just host) port = do
-  let hints = defaultHints{addrSocketType = Stream}
-  addr:_<-getAddrInfo (Just hints) (Just host) (Just port)
-  return addr  
 
 -- | Restart game at the same level
 restart :: UI -> EventM Name (Next UI)
@@ -267,7 +248,7 @@ drawLeaderBoard :: Game -> Widget Name
 drawLeaderBoard g = emptyWidget
 
 drawInfo :: Game -> Widget Name
-drawInfo g = hLimit 15 -- size of next piece box
+drawInfo g = hLimit 18 -- size of next piece box
   $ vBox [ drawNextShape (g ^. nextTetrisType)
          , padTop (Pad 3) $ drawScore g
          , padTop (Pad 2) $ drawHelp
