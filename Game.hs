@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 module Game where
 
-import Control.Concurrent (threadDelay, forkIO) {--}
+import Control.Concurrent (threadDelay, forkIO)
 import Control.Monad (void, forever)
 import Control.Monad.IO.Class (liftIO)
 import Prelude hiding (Left, Right)
