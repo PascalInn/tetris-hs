@@ -149,15 +149,12 @@ clearFullRows g = g & stable %~ clearBoard
                     & inCombo .~ setBool
                     & combo %~ setCombo
   where
-    clearBoard = M.mapKeys moveAbove . M.filterWithKey notClearRows
+    clearBoard = M.mapKeys moveAbove . M.filterWithKey (\k v -> notElem (k^.y) clearRows)
     count = length clearRows
-    isFull r = boardWidth == (length $ M.filterWithKey (inRow r) (g^.stable))
-    inRow r (Position x y) _ = r == y
-    clearRows = filter isFull [1..boardHeight]
-    notClearRows (Position x y) _ = notElem y clearRows
-    moveAbove (Position x y)= 
-      let down = length $ filter (<y) clearRows
-      in Position x (y-down)
+    full n = boardWidth == (length $ M.filterWithKey (\k v -> (k^.y) == n) (g^.stable))
+    clearRows = filter full [1..boardHeight]
+    moveAbove a = moveBy (down a) Down a
+    down a = length $ filter (< a^.y) clearRows
     setBool = count > 0
     setCombo a = if setBool
                     then a + 1
