@@ -2,6 +2,7 @@ Tetrs Game implementation with haskell-platform , coding by TC Gu (backend) and 
 
 reference:
 http://github.com/SamTay/tetris
+https://github.com/hauxir/haskell-tetris
 http://github.com/jtdaugherty/brick
 http://tetris.wikia.com/wiki/
 http://github.com/haskell/network
