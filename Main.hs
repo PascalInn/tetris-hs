@@ -1,27 +1,12 @@
 module Main where
 
-import Control.Monad (when)
-import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
-import System.Exit (exitSuccess)
-import System.IO (readFile, writeFile)
-import Text.Read (readMaybe)
-
 import Tetris
 import UIdef
 import Game
 import Cover
 import Back
 import Inputip
-
-import Options.Applicative
-import qualified System.Directory as D
-import System.FilePath ((</>))
-import qualified System.FilePath as F
 import Network.Socket as S
-
-defaultAddr :: String
-defaultAddr = "10.19.74.166"
 
 main :: IO ()
 main = do

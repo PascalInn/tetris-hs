@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Cover 
-  ( cover
-  ) where
+module Cover where
 
 import System.Exit(exitSuccess)
 import Control.Applicative ((<$>))

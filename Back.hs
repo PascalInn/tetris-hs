@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module Back 
-  ( back
-  ) where
+module Back where
 
 
 import Tetris

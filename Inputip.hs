@@ -1,12 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
-module Inputip 
-  ( inputip
-  ) where
+module Inputip where
 
-import Lens.Micro
-import Lens.Micro.TH
+import Control.Lens
 import qualified Graphics.Vty as V
 
 import qualified Brick.Main as M
