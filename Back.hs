@@ -21,21 +21,8 @@ import qualified Brick.Widgets.Center as C
 import qualified Brick.Widgets.Border as B
 import Brick.Widgets.Core
 
---data PlayingMode = Single | Player1 | Player2 deriving (Show, Eq)
-
 data Name = Button1 | Button2
           deriving (Show, Ord, Eq)
-{-
-data UI = UI
-  { _game    :: Game         -- ^ tetris game
-  , _predrop :: Maybe String -- ^ hard drop preview cell
-  , _frozen  :: Bool         -- ^ freeze after hard drop before time step
-  , _state   :: PlayingMode
-  , _dualBoard :: Board
-  , _dualScore :: Int
-  , _connection :: Maybe Socket
-  }
--}
 
 data St =
     St { _clicked :: [T.Extent Name]
@@ -44,10 +31,6 @@ data St =
        , _num :: Maybe Int
        }
 makeLenses ''St
-
-
-
-
 
 drawUi :: St -> [Widget Name]
 drawUi st = [buttonLayer st]
