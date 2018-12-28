@@ -2,12 +2,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Back where
 
-
 import Tetris
 import UIdef
 
-import Network.Socket hiding (recv)
-import Network.Socket.ByteString (recv, sendAll)
 import System.Exit(exitSuccess)
 import Control.Applicative ((<$>))
 import Control.Lens
