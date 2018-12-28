@@ -1,4 +1,11 @@
-Tetrs Game implementation with haskell-platform
+Tetrs Game implementation with haskell-platform , coding by TC Gu (backend) and CY Ding (UI)
+
+reference:
+http://github.com/SamTay/tetris
+http://github.com/jtdaugherty/brick
+http://tetris.wikia.com/wiki/
+http://github.com/haskell/network
+Real World Haskell Chapter 27
 
 
 How to build:
