@@ -53,10 +53,12 @@ Dual playing (demo):
   
   Click Player1 and play as a server.
   
-  Click Player2 and input the IP of server to join playing with server
+  Click Player2 and input the IP of server to join playing with server.
+  
+  with bad quit condition, need exception function for server implement.
   
 
 Further construction:
 
-  More interface in dual playing mode.
-  
+  More interface and problem fixing in dual playing mode.
+ 
