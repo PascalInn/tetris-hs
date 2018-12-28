@@ -92,7 +92,7 @@ cmp Single  Player2 = False
 cmp Player1 Single  = False
 cmp Player2 Single  = False
 
--- | If frozen, return same UI, else execute game op   游戏暂停？？？
+-- | If frozen, return same UI, else execute game op
 frozenGuard :: (Game -> Game) -> UI -> EventM Name (Next UI)
 frozenGuard op ui = continue
   $ if ui ^. frozen
@@ -265,7 +265,7 @@ drawScore ui
         $ padTopBottom 0
         $ withBorderStyle BS.unicodeBold
         $ B.borderWithLabel (str "Score")
-        $ vBox [ drawStat "score   " $ (ui ^. game ^. score)
+        $ vBox [ drawStat "score" $ (ui ^. game ^. score)
                , padTop (Pad 1) $ drawStat2 "count down " (display (ui^.counter)) "s"
                , drawLeaderBoard (ui ^. game)
                ] 
@@ -274,7 +274,7 @@ drawScore ui
         $ padTopBottom 0
         $ withBorderStyle BS.unicodeBold
         $ B.borderWithLabel (str "Score")
-        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
+        $ vBox [ drawStat "score" $ (ui ^. game ^. score)
                , padTop (Pad 1) $ str " "
                , drawLeaderBoard (ui ^. game)
                ]                          
@@ -283,8 +283,8 @@ drawScore ui
         $ padTopBottom 0
         $ withBorderStyle BS.unicodeBold
         $ B.borderWithLabel (str "Score")
-        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
-               , padTop (Pad 0) $ drawStat "enemy score" $ (ui ^. dualScore)
+        $ vBox [ drawStat "my   " $ (ui ^. game ^. score)
+               , padTop (Pad 0) $ drawStat "enemy" $ (ui ^. dualScore)
                , padTop (Pad 0) $ drawStat2 "count down " (display (ui^.counter)) "s"
                , drawLeaderBoard (ui ^. game)
                ]   
@@ -293,8 +293,8 @@ drawScore ui
         $ padTopBottom 0
         $ withBorderStyle BS.unicodeBold
         $ B.borderWithLabel (str "Score")
-        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
-               , padTop (Pad 0) $ drawStat "enemy score" $ (ui ^. dualScore)
+        $ vBox [ drawStat "my   " $ (ui ^. game ^. score)
+               , padTop (Pad 0) $ drawStat "enemy" $ (ui ^. dualScore)
                , padTop (Pad 0) $ drawStat2 "time " (display (ui^.counter)) "s"
                , drawLeaderBoard (ui ^. game)
                ]  
@@ -320,13 +320,13 @@ drawHelp = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Help")
   $ padTopBottom 0
   $ vBox $ map (uncurry drawKeyInfo)
-  $ [ ("Left", "h, ←")
-    , ("Right", "l, →")
-    , ("Down", "j, ↓")
-    , ("Rotate", "k, ↑")
+  $ [ ("Left", "←")
+    , ("Right", "→")
+    , ("Down", "↓")
+    , ("Rotate", "↑")
     , ("Drop", "space")
     , ("Restart", "r")
-    , ("Quit", "q")
+    , ("Quit", "Esc")
     ]
 
 drawKeyInfo :: String -> String -> Widget Name
