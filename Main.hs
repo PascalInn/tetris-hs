@@ -6,7 +6,8 @@ import Game
 import Cover
 import Back
 import Inputip
-import Network.Socket as S
+
+import Network.Socket
 
 main :: IO ()
 main = do
