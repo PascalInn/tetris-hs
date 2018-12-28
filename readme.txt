@@ -24,19 +24,19 @@ Single playing:
 
 Instruction
 
-  up: rotate counterclockwise
+  up:      rotate counterclockwise
   
-  left: left move
+  left:    left move
   
-  right: right move
+  right:   right move
   
-  down: down move
+  down:    down move
   
-  space: fast drop
+  space:   fast drop
   
-  Esc: quit
+  Esc:     quit
   
-  r: restart
+  r:       restart
   
 
 Dual playing (demo):
