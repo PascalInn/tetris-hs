@@ -165,7 +165,7 @@ clearFullRows g = g & stable %~ clearBoard
 
 updateScore :: Game -> Game
 updateScore g = 
-  let increase = (g^.clears)*(100 + 50 * (g^.combo))
+  let increase = (g^.clears)*(50 + 50 * (g^.combo))
   in 
      g & score %~ (+ increase)
        & clears .~ 0          
@@ -200,21 +200,13 @@ timeStep g =
 
 --maybe can be reduced, ugly code, try left move and right move and if type is I, try moveby 2 block right.
 rotateInGame :: Board -> Tetrimino -> Tetrimino
-rotateInGame b t = if safeMoving b (rotateTetrimino t)
-                      then rotateTetrimino t
-                      else 
-                        if additionalRule b t
-                           then t
-                           else
-                             if safeMoving b (move Left (rotateTetrimino t))
-                                then move Left (rotateTetrimino t)
-                                else
-                                  if safeMoving b (move Right (rotateTetrimino t))
-                                     then move Right (rotateTetrimino t)
-                                     else
-                                       if (t^.tType == I) && (safeMoving b (moveBy 2 Right (rotateTetrimino t)))
-                                          then moveBy 2 Right (rotateTetrimino t)
-                                          else t
+rotateInGame b t 
+  | safeMoving b (rotateTetrimino t) = rotateTetrimino t
+  | additionalRule b t = t
+  | safeMoving b (move Left (rotateTetrimino t)) = move Left (rotateTetrimino t)
+  | safeMoving b (move Right (rotateTetrimino t)) = move Right (rotateTetrimino t)
+  | (t^.tType == I) && (safeMoving b (moveBy 2 Right (rotateTetrimino t))) = moveBy 2 Right (rotateTetrimino t)
+  | otherwise = t
 
   where
     additionalRule b t = 

@@ -11,8 +11,9 @@ import Data.Char
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import Tetris
+import UIdef
 import Encoder
+import Tetris
 
 import Brick hiding (Down)
 import Brick.BChan
@@ -23,24 +24,9 @@ import qualified Graphics.Vty as V
 import Data.Map (Map)
 import qualified Data.Map as M
 import Control.Lens
---import qualified Network.WebSockets as WS
 import Network.Socket hiding (recv)
 import Network.Socket.ByteString (recv, sendAll)
 import qualified Data.ByteString as S
-
-data PlayingMode = Single | Player1 | Player2 deriving (Show, Eq)
-
-data UI = UI
-  { _game    :: Game         -- ^ tetris game
-  , _predrop :: Maybe String -- ^ hard drop preview cell
-  , _frozen  :: Bool         -- ^ freeze after hard drop before time step
-  , _state   :: PlayingMode
-  , _dualBoard :: Board
-  , _dualScore :: Int
-  , _connection :: Maybe Socket
-  }
-
-makeLenses ''UI
 
 -- | Ticks mark passing of time
 data Tick = Tick | Tok
@@ -52,7 +38,6 @@ data CellLocation = InGrid | InNextShape
 data TVisual = Normal | FastDrop
 
 -- App definition and execution
-
 app :: App UI Tick Name
 app = App { appDraw = drawUI
           , appChooseCursor = neverShowCursor
@@ -61,8 +46,8 @@ app = App { appDraw = drawUI
           , appAttrMap = const theMap
           }
 
-playGame :: Maybe String -> PlayingMode -> Maybe Socket -> IO Game
-playGame mp pm conn= do
+playGame :: Maybe String -> PlayingMode -> Maybe Socket -> IO UI
+playGame mp pm conn = do
   let delay = levelToDelay
   chan <- newBChan 10
   forkIO $ forever $ do
@@ -72,9 +57,8 @@ playGame mp pm conn= do
     writeBChan chan Tok
     threadDelay 49999
   initialGame <- initGame 
-  let initialUI = UI initialGame mp False pm mempty 0 conn
-  ui <- customMain (V.mkVty V.defaultConfig) (Just chan) app initialUI
-  return $ ui ^. game
+  let initialUI = UI initialGame mp False pm mempty 0 conn 0 False
+  customMain (V.mkVty V.defaultConfig) (Just chan) app initialUI 
 
 levelToDelay :: Int
 levelToDelay  = floor $ 500000 
@@ -82,17 +66,31 @@ levelToDelay  = floor $ 500000
 -- Handling events
 
 handleEvent :: UI -> BrickEvent Name Tick -> EventM Name (Next UI)
-handleEvent ui (AppEvent Tick)                       = handleTick ui
-handleEvent ui (AppEvent Tok)                        = handleTok ui
-handleEvent ui (VtyEvent (V.EvKey V.KRight []))      = frozenGuard (gameMove Right) ui
-handleEvent ui (VtyEvent (V.EvKey V.KLeft []))       = frozenGuard (gameMove Left) ui
-handleEvent ui (VtyEvent (V.EvKey V.KDown []))       = frozenGuard (gameMove Down) ui
-handleEvent ui (VtyEvent (V.EvKey V.KUp []))         = frozenGuard gameRotate ui
-handleEvent ui (VtyEvent (V.EvKey (V.KChar ' ') [])) = continue $ ui & game %~ fastDrop
+handleEvent ui (AppEvent Tick)
+  | (cmp (ui^.state) Single) && (ui ^. stopflag == True) = halt ui
+  | (ui ^. counter > 606) && not(cmp (ui^.state) Single) = halt ui
+  | otherwise                                            = handleTick ui
+handleEvent ui (AppEvent Tok)                            = handleTok ui
+handleEvent ui (VtyEvent (V.EvKey V.KRight []))          = frozenGuard (gameMove Right) ui
+handleEvent ui (VtyEvent (V.EvKey V.KLeft []))           = frozenGuard (gameMove Left) ui
+handleEvent ui (VtyEvent (V.EvKey V.KDown []))           = frozenGuard (gameMove Down) ui
+handleEvent ui (VtyEvent (V.EvKey V.KUp []))             = frozenGuard gameRotate ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar ' ') []))     = continue $ ui & game %~ fastDrop
                                                                      & frozen .~ True
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 'r') [])) = restart ui
-handleEvent ui (VtyEvent (V.EvKey V.KEsc []))        = halt ui
-handleEvent ui _                                     = continue ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'r') []))     = restart ui
+handleEvent ui (VtyEvent (V.EvKey V.KEsc []))            = halt ui
+handleEvent ui _                                         = continue ui
+
+cmp:: PlayingMode -> PlayingMode -> Bool
+cmp Single  Single = True
+cmp Player1 Player1 = True
+cmp Player2 Player2 = True
+cmp Player1 Player2 = True
+cmp Player2 Player1 = True
+cmp Single  Player1 = False
+cmp Single  Player2 = False
+cmp Player1 Single  = False
+cmp Player2 Single  = False
 
 -- | If frozen, return same UI, else execute game op   游戏暂停？？？
 frozenGuard :: (Game -> Game) -> UI -> EventM Name (Next UI)
@@ -105,11 +103,15 @@ frozenGuard op ui = continue
 handleTick :: UI -> EventM Name (Next UI)
 handleTick ui =
   if gameOver g
-     then continue ui
-     else do
-       g' <- liftIO (timeStep g)
-       continue $ ui & game .~ g'
-                     & frozen .~ False
+     then continue $ ui & stopflag .~ True
+     else 
+       if ui ^. counter < 6
+         then do continue $ ui & counter .~ (ui ^. counter + 1)
+       else do
+            g' <- liftIO (timeStep g)
+            continue $ ui & game .~ g'
+                          & frozen .~ False
+                          & counter .~ (ui ^. counter + 1)
   where g = ui ^. game
 
 handleTok :: UI -> EventM Name (Next UI)
@@ -143,7 +145,6 @@ restart ui = do
                 & frozen .~ False
 
 -- Drawing
-
 drawUI :: UI -> [Widget Name]
 drawUI ui
   | ui ^. state == Single
@@ -238,7 +239,9 @@ ecw = str "  "
 hcw :: Widget Name{-要下落的地方-}
 hcw = str "[]"
 
-
+drawStat2 :: String -> Int -> String -> Widget Name
+drawStat2 s1 n s2= padLeftRight 1
+  $ str s1 <+> (padLeft Max $ str $ show n) <+> (str s2)
 
 drawStat :: String -> Int -> Widget Name
 drawStat s n = padLeftRight 1
@@ -250,27 +253,56 @@ drawLeaderBoard g = emptyWidget
 drawInfo :: UI -> Widget Name
 drawInfo ui = hLimit 18 -- size of next piece box
   $ vBox [ drawNextShape (ui ^. game ^. nextTetrisType)
-         , padTop (Pad 3) $ drawScore ui
-         , padTop (Pad 2) $ drawHelp
+         , padTop (Pad 1) $ drawScore ui
+         , padTop (Pad 1) $ drawHelp
          , padTop (Pad 1) $ drawGameOver (ui ^. game)
          ]
 
 drawScore :: UI -> Widget Name
 drawScore ui 
-  | (ui ^. state) == Single = hLimit 18
-                                  $ padTopBottom 0
-                                  $ withBorderStyle BS.unicodeBold
-                                  $ B.borderWithLabel (str "Score")
-                                  $ drawStat "Score" $ (ui ^. game ^. score)
-  | otherwise                   = hLimit 18
-                                  $ padTopBottom 0
-                                  $ withBorderStyle BS.unicodeBold
-                                  $ B.borderWithLabel (str "Score")
-                                  $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
-                                         , padTop (Pad 1) $ drawStat "enemy score" $ (ui ^. dualScore)
-                                         , drawLeaderBoard (ui ^. game)
-                                         ]   
+  | (ui^.state) == Single && (ui^.counter) <=6     
+      = hLimit 18
+        $ padTopBottom 0
+        $ withBorderStyle BS.unicodeBold
+        $ B.borderWithLabel (str "Score")
+        $ vBox [ drawStat "score   " $ (ui ^. game ^. score)
+               , padTop (Pad 1) $ drawStat2 "count down " (display (ui^.counter)) "s"
+               , drawLeaderBoard (ui ^. game)
+               ] 
+  | (ui^.state) == Single && (ui^.counter) > 6     
+      = hLimit 18
+        $ padTopBottom 0
+        $ withBorderStyle BS.unicodeBold
+        $ B.borderWithLabel (str "Score")
+        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
+               , padTop (Pad 1) $ str " "
+               , drawLeaderBoard (ui ^. game)
+               ]                          
+  | (ui^.counter) <= 6                     
+      = hLimit 18
+        $ padTopBottom 0
+        $ withBorderStyle BS.unicodeBold
+        $ B.borderWithLabel (str "Score")
+        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
+               , padTop (Pad 0) $ drawStat "enemy score" $ (ui ^. dualScore)
+               , padTop (Pad 0) $ drawStat2 "count down " (display (ui^.counter)) "s"
+               , drawLeaderBoard (ui ^. game)
+               ]   
+  | otherwise                    
+      = hLimit 18
+        $ padTopBottom 0
+        $ withBorderStyle BS.unicodeBold
+        $ B.borderWithLabel (str "Score")
+        $ vBox [ drawStat "my score   " $ (ui ^. game ^. score)
+               , padTop (Pad 0) $ drawStat "enemy score" $ (ui ^. dualScore)
+               , padTop (Pad 0) $ drawStat2 "time " (display (ui^.counter)) "s"
+               , drawLeaderBoard (ui ^. game)
+               ]  
 
+display :: Int -> Int
+display time 
+  | time <= 6  = 3 - (time `div` 2)
+  | otherwise  = 300 - (time `div` 2)
 drawNextShape :: TetriminoType -> Widget Name
 drawNextShape t = withBorderStyle BS.unicodeBold
   $ B.borderWithLabel (str "Next")
@@ -316,8 +348,6 @@ theMap = attrMap V.defAttr
   , (zAttr, tToColor Z `on` tToColor Z)
   , (jAttr, tToColor J `on` tToColor J)
   , (lAttr, tToColor L `on` tToColor L)
-  -- attributes for hard drop preview (would be VERY clean if I could figure out how to
-  -- query for default background color.. alas
   , (ihAttr, fg $ tToColor I)
   , (ohAttr, fg $ tToColor O)
   , (thAttr, fg $ tToColor T)
